@@ -5,24 +5,34 @@
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     android:gravity="center_horizontal">
+    <ScrollView
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content">
     <LinearLayout
         android:orientation="horizontal"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:paddingTop="5dip"
-        android:paddingBottom="5dip"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:showDividers="middle"
+        android:visibility="gone"
+        android:padding="10dp"
+        android:divider="@drawable/empty_small_divider"
+        android:id="@+id/qLayout"
         android:gravity="center_horizontal">
 
         <RadioGroup
             android:layout_width="fill_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:id="@+id/group1">
+            android:id="@+id/RadioGroup">
 
-            <TextView android:layout_width="fill_parent"
+            <ImageView
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent" />
+
+            <TextView android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="#000000"
-                android:textSize="25sp"
+                android:textSize="20sp"
                 android:textStyle="bold"
                 android:id="@+id/question"/>
 
@@ -50,28 +60,57 @@
                 android:layout_height="wrap_content"
                 />
         </RadioGroup>
-
     </LinearLayout>
+    </ScrollView>
+
+    <ScrollView
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content">
     <LinearLayout
-        android:orientation="horizontal"
+        android:orientation="vertical"
         android:layout_width="fill_parent"
         android:layout_height="wrap_content"
-        android:paddingTop="5dip"
-        android:paddingBottom="5dip"
+        android:showDividers="middle"
+        android:divider="@drawable/empty_small_divider"
         android:gravity="center_horizontal">
+
+        <NumberPicker
+            android:id="@+id/LevelSelector"
+            android:layout_gravity="center_horizontal"
+            android:orientation="vertical"
+            android:width="200dip"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"/>
 
         <Button
             android:background="#2fcc71"
             android:id="@+id/nextBtn"
             android:layout_width="fill_parent"
             android:layout_height="fill_parent"
-            android:text="Следующий"
+            android:text="Выберите категорию"
             android:fontFamily="sans-serif-light"
             android:onClick="parseQuestion"
             android:layout_weight="1"
             android:layout_marginLeft="10dp"
             android:layout_marginRight="10dp"
             android:layout_marginTop="10dp" />
-    </LinearLayout>
 
+        <Chronometer
+            android:layout_width="match_parent"
+            android:gravity="center_horizontal"
+            android:textSize="20sp"
+            android:id="@+id/chrono"
+            android:layout_height="match_parent" />
+
+        <ProgressBar
+            style="@android:style/Widget.ProgressBar.Horizontal"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_marginLeft="10dp"
+            android:layout_marginRight="10dp"
+            android:max="25"
+            android:id="@+id/progressBar" />
+    </LinearLayout>
+    </ScrollView>
 </LinearLayout>
