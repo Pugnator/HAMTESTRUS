@@ -1,13 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    xmlns:android="http://schemas.android.com/apk/res/android">
 <LinearLayout
-    xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
+    android:screenOrientation="portrait"
     android:layout_width="fill_parent"
     android:layout_height="fill_parent"
     android:gravity="center_horizontal">
-    <ScrollView
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content">
+    <ImageView
+        android:id="@+id/expanded_image"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:visibility="invisible"
+        android:contentDescription="@string/description_zoom_touch_close" />
+
     <LinearLayout
         android:orientation="horizontal"
         android:layout_width="match_parent"
@@ -27,7 +35,11 @@
 
             <ImageView
                 android:layout_width="wrap_content"
-                android:layout_height="match_parent" />
+                android:layout_height="wrap_content"
+                android:scaleType="centerCrop"
+                android:adjustViewBounds="true"
+                android:onClick="expandImage"
+                android:id="@+id/qpic"/>
 
             <TextView android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -61,7 +73,6 @@
                 />
         </RadioGroup>
     </LinearLayout>
-    </ScrollView>
 
     <ScrollView
         android:layout_width="fill_parent"
@@ -109,8 +120,10 @@
             android:layout_alignParentTop="true"
             android:layout_marginLeft="10dp"
             android:layout_marginRight="10dp"
+            android:layout_marginBottom="10dp"
             android:max="25"
             android:id="@+id/progressBar" />
     </LinearLayout>
     </ScrollView>
 </LinearLayout>
+</ScrollView>

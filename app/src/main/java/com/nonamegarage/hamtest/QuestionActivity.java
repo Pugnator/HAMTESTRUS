@@ -3,8 +3,11 @@ package com.nonamegarage.hamtest;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
 import android.os.SystemClock;
 import android.support.v7.app.AlertDialog;
@@ -16,6 +19,7 @@ import android.view.View;
 import android.view.ViewDebug;
 import android.widget.Button;
 import android.widget.Chronometer;
+import android.widget.ImageView;
 import android.widget.NumberPicker;
 import android.widget.LinearLayout;
 import android.widget.ProgressBar;
@@ -81,13 +85,13 @@ class DBHelper extends SQLiteOpenHelper {
 public class QuestionActivity extends AppCompatActivity {
 
     private DBHelper dbHelper;
+    private ImageView qPic;
     private TextView qText;
     private RadioGroup rGroup;
     private LinearLayout qLayout;
     private ProgressBar progress;
     private Button nextBtn;
     private RadioGroup rgroup;
-
 
     private ArrayList<RadioButton> rButList;
 
@@ -122,7 +126,7 @@ public class QuestionActivity extends AppCompatActivity {
         for (int i = 0; i < count; i++) {
             View o = rGroup.getChildAt(i);
             if (o instanceof RadioButton) {
-                RadioButton btn = (RadioButton)o;
+                RadioButton btn = (RadioButton) o;
                 btn.setId(i + 1000);
                 rButList.add((RadioButton) o);
             }
@@ -131,10 +135,8 @@ public class QuestionActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onBackPressed()
-    {
-        if(backButtonCount >= 1)
-        {
+    public void onBackPressed() {
+        if (backButtonCount >= 1) {
             SharedPreferences settings = getSharedPreferences(PREFS_FILE, 0);
             SharedPreferences.Editor editor = settings.edit();
             editor.clear();
@@ -145,9 +147,7 @@ public class QuestionActivity extends AppCompatActivity {
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
             finish();
-        }
-        else
-        {
+        } else {
             Toast.makeText(this, "Нажмите \"Назад\" ещё раз, чтобы выйти", Toast.LENGTH_SHORT).show();
             backButtonCount++;
         }
@@ -162,8 +162,18 @@ public class QuestionActivity extends AppCompatActivity {
         editor.commit();
     }
 
-    public void resetTestState()
-    {
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        setContentView(R.layout.activity_test);
+    }
+
+    public void resetTestState() {
+        qPic = (ImageView) findViewById(R.id.qpic);
+        byte[] arr = getQuestionPicture(1);
+        Bitmap bitmap = BitmapFactory.decodeByteArray(arr , 0, arr.length);
+        qPic.setImageBitmap(bitmap);
+        //qPic.setVisibility(View.GONE);
         NumberPicker np = (NumberPicker) findViewById(R.id.LevelSelector);
         np.setMaxValue(4);
         np.setMinValue(3);
@@ -198,30 +208,44 @@ public class QuestionActivity extends AppCompatActivity {
         answers_passed = 0;
         errors_number = 0;
         last_question_id = 1;
+        questions_number_max = getMaxQuestionNumber(category);
+        progress.setMax(questions_number_max);
+    }
+
+    byte[] getQuestionPicture(int index){
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+        if (db.isOpen()) {
+            try {
+                Cursor c = db.rawQuery("select image from images where idx=" + index, null);
+                if (c.moveToFirst()) {
+                    byte[] pic=c.getBlob(0);
+                    return pic;
+                }
+            } catch (Exception e) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    public int getMaxQuestionNumber(int category) {
         SQLiteDatabase db = dbHelper.getReadableDatabase();
         if (db.isOpen()) {
             try {
                 Cursor c = db.rawQuery("select qnum from categories where level=" + category, null);
                 if (c.moveToFirst()) {
-                    questions_number_max = c.getInt(0);
+                    return c.getInt(0);
                 }
-            } catch (Exception e) {
-                Log.d(getString(R.string.app_name), ":((((: ");
-            }
-        }
-    }
-
-    public int getMaxQuestionNumber(int category)
-    {
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
-        if (db.isOpen()) {
-            try {
-                Cursor c = db.rawQuery("select serial from answers where question=" + last_question_id + " and is_correct=1", null);
             } catch (Exception e) {
                 return -1;
             }
         }
-            return -1;
+        return -1;
+    }
+
+    public void expandImage (View curView)
+    {
+
     }
 
     public void parseQuestion(View curview) {
@@ -237,27 +261,22 @@ public class QuestionActivity extends AppCompatActivity {
             timer.start();
             Log.d(getString(R.string.app_name), "Questions number: " + Integer.toString(questions_number_max));
             nextBtn.setText("Ответ");
-        }
-            else if(questions_number_max == answers_passed)
-            {
-                AlertDialog.Builder builder1 = new AlertDialog.Builder(this);
-                builder1.setCancelable(true);
-                if(errors_number <= max_errors_possible)
-                {
-                    Log.d(getString(R.string.app_name), "Errors: " + Integer.toString(errors_number));
-                    builder1.setMessage("Сдано! Ошибок:" + Integer.toString(errors_number));
-                }
-                else
-                {
-                    Log.d(getString(R.string.app_name), "Errors: " + Integer.toString(errors_number));
-                    builder1.setMessage("Не сдан! Ошибок: "+Integer.toString(errors_number));
-                }
-                AlertDialog alert11 = builder1.create();
-                alert11.show();
-                //qLayout.setVisibility(View.GONE);
-                setTitle(getString(R.string.app_name));
-                nextBtn.setText("Заново");
-                timer.stop();
+        } else if (questions_number_max == answers_passed) {
+            AlertDialog.Builder alertBuilder = new AlertDialog.Builder(this);
+            alertBuilder.setCancelable(true);
+            if (errors_number <= max_errors_possible) {
+                Log.d(getString(R.string.app_name), "Errors: " + Integer.toString(errors_number));
+                alertBuilder.setMessage("Сдано! Ошибок:" + Integer.toString(errors_number));
+            } else {
+                Log.d(getString(R.string.app_name), "Errors: " + Integer.toString(errors_number));
+                alertBuilder.setMessage("Не сдан! Ошибок: " + Integer.toString(errors_number));
+            }
+            AlertDialog alert = alertBuilder.create();
+            alert.show();
+            //qLayout.setVisibility(View.GONE);
+            setTitle(getString(R.string.app_name));
+            nextBtn.setText("Заново");
+            timer.stop();
         }
 
         RadioGroup rgroup = (RadioGroup) findViewById(R.id.RadioGroup);
@@ -269,26 +288,27 @@ public class QuestionActivity extends AppCompatActivity {
                         .show();
                 return;
             }
-            answer-=1002;
+            answer -= 1001;
             if ("Ответ" == nextBtn.getText()) {
+                Log.d(getString(R.string.app_name), "Question " + Integer.toString(answers_passed) + " out of " + Integer.toString(questions_number_max));
                 SQLiteDatabase db = dbHelper.getReadableDatabase();
                 if (db.isOpen()) {
                     try {
-                        Cursor c = db.rawQuery("select serial from answers where question=" + last_question_id + " and is_correct=1", null);
+                        String request = "select serial from answers where question=" + last_question_id + " and is_correct=1";
+                        Cursor c = db.rawQuery(request, null);
                         if (c.moveToFirst()) {
-                            if(answer == c.getInt(0) - 1)
-                            {
-                                Log.d(getString(R.string.app_name), "OK: Answer is " + Integer.toString(answer) + " when correct is " + Integer.toString(c.getInt(0)));
-                                rButList.get(answer).setTextColor(Color.GREEN);
+                            int correct_answer = c.getInt(0);
+                            if (answer == correct_answer) {
+                                Log.d(getString(R.string.app_name), request);
+                                Log.d(getString(R.string.app_name), "OK: Answer is " + Integer.toString(answer) + " when correct is " + Integer.toString(correct_answer));
+                                rButList.get(answer - 1).setTextColor(Color.GREEN);
                                 Toast.makeText(getApplicationContext(), "Правильно!", Toast.LENGTH_SHORT)
                                         .show();
-                            }
-                            else
-                            {
-                                Log.d(getString(R.string.app_name), "WRONG: Answer is " + Integer.toString(answer) + " when correct is " + Integer.toString(c.getInt(0)));
+                            } else {
+                                Log.d(getString(R.string.app_name), "WRONG: Answer is " + Integer.toString(answer) + " when correct is " + Integer.toString(correct_answer));
                                 errors_number++;
-                                rButList.get(answer).setTextColor(Color.RED);
-                                rButList.get(c.getInt(0) - 1).setTextColor(Color.GREEN);
+                                rButList.get(answer - 1).setTextColor(Color.RED);
+                                rButList.get(correct_answer - 1).setTextColor(Color.GREEN);
                                 Toast.makeText(getApplicationContext(), "Неправильно!", Toast.LENGTH_SHORT)
                                         .show();
                             }
@@ -300,13 +320,11 @@ public class QuestionActivity extends AppCompatActivity {
                 }
                 nextBtn.setText("Следующий вопрос");
                 return;
-            }
-            else if ("Заново" == nextBtn.getText())
-            {
+            } else if ("Заново" == nextBtn.getText()) {
                 resetTestState();
                 return;
-            }
-            else {
+            } else {
+                qPic.setVisibility(View.GONE);
                 nextBtn.setText("Ответ");
                 rgroup.clearCheck();
             }
@@ -331,6 +349,7 @@ public class QuestionActivity extends AppCompatActivity {
                 for (c.moveToFirst(); !c.isAfterLast(); c.moveToNext()) {
                     RadioButton btn = rButIter.next();
                     btn.setTextColor(Color.BLACK);
+                    btn.setText("");
                     btn.setText(c.getString(0).trim());
                 }
                 c.close();
