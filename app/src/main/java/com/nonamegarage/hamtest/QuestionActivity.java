@@ -97,8 +97,8 @@ public class QuestionActivity extends AppCompatActivity {
     private int answers_passed = 0;
     private int errors_number = 0;
     private int last_question_id = 1;
-    private final int max_errors_possible = 5;
-    private final int questions_number_max = 20;
+    private int max_errors_possible = 5;
+    private int questions_number_max = 20;
     private Chronometer timer;
 
     @Override
@@ -170,6 +170,7 @@ public class QuestionActivity extends AppCompatActivity {
         np.setValue(category);
         np.setVisibility(View.VISIBLE);
         np.setWrapSelectorWheel(false);
+        np.setDescendantFocusability(NumberPicker.FOCUS_BLOCK_DESCENDANTS);
         timer = (Chronometer) findViewById(R.id.chrono);
         timer.setOnChronometerTickListener(new Chronometer.OnChronometerTickListener() {
             @Override
@@ -197,30 +198,59 @@ public class QuestionActivity extends AppCompatActivity {
         answers_passed = 0;
         errors_number = 0;
         last_question_id = 1;
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+        if (db.isOpen()) {
+            try {
+                Cursor c = db.rawQuery("select qnum from categories where level=" + category, null);
+                if (c.moveToFirst()) {
+                    questions_number_max = c.getInt(0);
+                }
+            } catch (Exception e) {
+                Log.d(getString(R.string.app_name), ":((((: ");
+            }
+        }
+    }
+
+    public int getMaxQuestionNumber(int category)
+    {
+        SQLiteDatabase db = dbHelper.getReadableDatabase();
+        if (db.isOpen()) {
+            try {
+                Cursor c = db.rawQuery("select serial from answers where question=" + last_question_id + " and is_correct=1", null);
+            } catch (Exception e) {
+                return -1;
+            }
+        }
+            return -1;
     }
 
     public void parseQuestion(View curview) {
 
-        switch (answers_passed) {
-            case 0:
-                NumberPicker np = (NumberPicker) findViewById(R.id.LevelSelector);
-                category = np.getValue();
-                setTitle("Категория "+ Integer.toString(category));
-                np.setVisibility(View.GONE);
-                qLayout.setVisibility(View.VISIBLE);
-                timer.start();
-                nextBtn.setText("Ответ");
-                break;
-            case questions_number_max:
+        if (0 == answers_passed) {
+
+            questions_number_max = getMaxQuestionNumber(category);
+            NumberPicker np = (NumberPicker) findViewById(R.id.LevelSelector);
+            category = np.getValue();
+            setTitle("Категория " + Integer.toString(category));
+            np.setVisibility(View.GONE);
+            qLayout.setVisibility(View.VISIBLE);
+            timer.start();
+            Log.d(getString(R.string.app_name), "Questions number: " + Integer.toString(questions_number_max));
+            nextBtn.setText("Ответ");
+        }
+            else if(questions_number_max == answers_passed)
+            {
                 AlertDialog.Builder builder1 = new AlertDialog.Builder(this);
                 builder1.setCancelable(true);
                 if(errors_number <= max_errors_possible)
                 {
-                    builder1.setMessage("Сдано!");
+                    Log.d(getString(R.string.app_name), "Errors: " + Integer.toString(errors_number));
+                    builder1.setMessage("Сдано! Ошибок:" + Integer.toString(errors_number));
                 }
                 else
                 {
-                    builder1.setMessage("Не сдан!");
+                    Log.d(getString(R.string.app_name), "Errors: " + Integer.toString(errors_number));
+                    builder1.setMessage("Не сдан! Ошибок: "+Integer.toString(errors_number));
                 }
                 AlertDialog alert11 = builder1.create();
                 alert11.show();
@@ -228,9 +258,6 @@ public class QuestionActivity extends AppCompatActivity {
                 setTitle(getString(R.string.app_name));
                 nextBtn.setText("Заново");
                 timer.stop();
-                break;
-            default:
-                break;
         }
 
         RadioGroup rgroup = (RadioGroup) findViewById(R.id.RadioGroup);
@@ -249,17 +276,19 @@ public class QuestionActivity extends AppCompatActivity {
                     try {
                         Cursor c = db.rawQuery("select serial from answers where question=" + last_question_id + " and is_correct=1", null);
                         if (c.moveToFirst()) {
-                            if(answer == c.getInt(0))
+                            if(answer == c.getInt(0) - 1)
                             {
+                                Log.d(getString(R.string.app_name), "OK: Answer is " + Integer.toString(answer) + " when correct is " + Integer.toString(c.getInt(0)));
                                 rButList.get(answer).setTextColor(Color.GREEN);
                                 Toast.makeText(getApplicationContext(), "Правильно!", Toast.LENGTH_SHORT)
                                         .show();
                             }
                             else
                             {
+                                Log.d(getString(R.string.app_name), "WRONG: Answer is " + Integer.toString(answer) + " when correct is " + Integer.toString(c.getInt(0)));
                                 errors_number++;
                                 rButList.get(answer).setTextColor(Color.RED);
-                                rButList.get(c.getInt(0) -1).setTextColor(Color.GREEN);
+                                rButList.get(c.getInt(0) - 1).setTextColor(Color.GREEN);
                                 Toast.makeText(getApplicationContext(), "Неправильно!", Toast.LENGTH_SHORT)
                                         .show();
                             }

@@ -13,8 +13,10 @@ DB = 'main.db'
 schemes = [
     ("CREATE TABLE IF NOT EXISTS categories \
     (ID INTEGER PRIMARY KEY AUTOINCREMENT, level INTEGER, qnum INTEGER, max_errors INTEGER)"),
+    ("CREATE TABLE IF NOT EXISTS images \
+    (ID INTEGER PRIMARY KEY AUTOINCREMENT, image BLOB, idx INTEGER)"),
     ("CREATE TABLE IF NOT EXISTS questions \
-    (ID INTEGER PRIMARY KEY AUTOINCREMENT, question_text TEXT, number INTEGER, category INTEGER, use_count INTEGER, last_result INTEGER)"),
+    (ID INTEGER PRIMARY KEY AUTOINCREMENT, question_text TEXT, question_image INTEGER, number INTEGER, category INTEGER, use_count INTEGER, last_result INTEGER)"),
     ("CREATE TABLE IF NOT EXISTS answers \
     (ID INTEGER PRIMARY KEY AUTOINCREMENT, answer_text TEXT, is_correct INTEGER, serial INTEGER, question INTEGER)"),
 ]
@@ -42,7 +44,7 @@ def create_db():
 
 
 def process_tests(category):
-    with open(str(category) + '.txt') as f:
+    with open('text/' + str(category) + '.txt') as f:
         return f.read().splitlines()
 
 
@@ -112,8 +114,24 @@ def extract_questions(test, category):
     conn.close()
 
 
+def processImages():
+    conn = sqlite3.connect(DB)
+    c = conn.cursor()
+    for subdir, dirs, files in os.walk(os.getcwd()):
+        for file in files:
+            # print os.path.join(subdir, file)
+            filepath = subdir + os.sep + file
+
+            if filepath.endswith(".png"):
+                imageFile = open(filepath, 'rb')
+                b = sqlite3.Binary(imageFile.read())
+                c.execute("INSERT INTO images (image, idx) values(?,?)", (b,os.path.splitext(file)[0],))
+    conn.commit()
+    conn.close()
+
+
 def process_answers(category):
-    with open(str(category) + 'a.txt') as f:
+    with open('text/' + str(category) + 'a.txt') as f:
         answers = f.read().splitlines()
         quest = 1
         conn = sqlite3.connect(DB)
@@ -131,7 +149,8 @@ def process_answers(category):
             else:
                 sys.exit(1)
 
-            sql = '''update answers set is_correct=1 where question=(select ID from questions where category={0} and number={1}) and  serial={2}'''.format(category,quest,result)
+            sql = '''update answers set is_correct=1 where question=\
+            (select ID from questions where category={0} and number={1}) and  serial={2}'''.format(category,quest,result)
             quest = quest + 1
             c.execute(sql)
         conn.commit()
@@ -141,6 +160,7 @@ def process_answers(category):
 def main():
     create_db()
     setPassConditions()
+    processImages()
     for i in range(3, 5, 1):
         lines = process_tests(i)
         if lines:
