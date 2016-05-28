@@ -169,11 +169,6 @@ public class QuestionActivity extends AppCompatActivity {
     }
 
     public void resetTestState() {
-        qPic = (ImageView) findViewById(R.id.qpic);
-        byte[] arr = getQuestionPicture(1);
-        Bitmap bitmap = BitmapFactory.decodeByteArray(arr , 0, arr.length);
-        qPic.setImageBitmap(bitmap);
-        //qPic.setVisibility(View.GONE);
         NumberPicker np = (NumberPicker) findViewById(R.id.LevelSelector);
         np.setMaxValue(4);
         np.setMinValue(3);
@@ -273,7 +268,6 @@ public class QuestionActivity extends AppCompatActivity {
             }
             AlertDialog alert = alertBuilder.create();
             alert.show();
-            //qLayout.setVisibility(View.GONE);
             setTitle(getString(R.string.app_name));
             nextBtn.setText("Заново");
             timer.stop();
@@ -337,12 +331,25 @@ public class QuestionActivity extends AppCompatActivity {
         SQLiteDatabase db = dbHelper.getReadableDatabase();
         if (db.isOpen()) {
             try {
-                Cursor c = db.rawQuery("select ID,question_text from questions where category=" + category + " ORDER BY RANDOM() LIMIT 1", null);
-
+                Cursor c = db.rawQuery("select ID,question_text,question_image from questions where category=" + category + " ORDER BY RANDOM() LIMIT 1", null);
+                int image_id =-1;
                 if (c.moveToFirst()) {
+                    image_id = c.getInt(2);
                     qText.setText(c.getString(1).trim());
                     last_question_id = c.getInt(0);
                 }
+                qPic = (ImageView) findViewById(R.id.qpic);
+                if(-1 != image_id)
+                {
+                    byte[] arr = getQuestionPicture(image_id);
+                    Bitmap bitmap = BitmapFactory.decodeByteArray(arr , 0, arr.length);
+                    qPic.setImageBitmap(bitmap);
+                }
+                else
+                {
+                    qPic.setVisibility(View.GONE);
+                }
+
 
                 c = db.rawQuery("select answer_text from answers where question=" + last_question_id, null);
                 Iterator<RadioButton> rButIter = rButList.iterator();

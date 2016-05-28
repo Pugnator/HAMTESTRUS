@@ -86,9 +86,13 @@ def extract_questions(test, category):
                 question = question + " " + test[i + it]
                 it = it + 1
             print(question.decode('1251'))
-            c.execute("INSERT OR REPLACE INTO questions(question_text, number, category) VALUES (?,?,?)",
-                      (question.decode('1251'), num, category))
+            c.execute("INSERT OR REPLACE INTO questions(question_text, number, category, question_image) VALUES (?,?,?,?)",
+                      (question.decode('1251'), num, category, 0))
             quest_id = c.lastrowid
+            continue
+        if "<<" in s.decode('1251'):
+            result = re.search('<<(.*)>>', s.decode('1251'))
+            c.execute("INSERT OR REPLACE INTO questions(question_image) VALUES (?)",(result.group(1),))
             continue
         if u"a)    " in s.decode('1251'):
             print(s[6:].decode('1251'))
