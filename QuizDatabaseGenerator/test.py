@@ -82,7 +82,7 @@ def extract_questions(test, category):
             print('Вопрос {0}'.format(num))
             question = ''
             it = 1
-            while test[i + it] and u"a)    " not in test[i + it].decode('1251'):
+            while test[i + it] and u"a)    " not in test[i + it].decode('1251') and u"<<" not in test[i + it].decode('1251'):
                 question = question + " " + test[i + it]
                 it = it + 1
             print(question.decode('1251'))
@@ -92,7 +92,7 @@ def extract_questions(test, category):
             continue
         if "<<" in s.decode('1251'):
             result = re.search('<<(.*)>>', s.decode('1251'))
-            c.execute("INSERT OR REPLACE INTO questions(question_image) VALUES (?)",(result.group(1),))
+            c.execute("update questions set question_image=? where number=?",(result.group(1),quest_id,))
             continue
         if u"a)    " in s.decode('1251'):
             print(s[6:].decode('1251'))

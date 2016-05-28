@@ -339,8 +339,9 @@ public class QuestionActivity extends AppCompatActivity {
                     last_question_id = c.getInt(0);
                 }
                 qPic = (ImageView) findViewById(R.id.qpic);
-                if(-1 != image_id)
+                if(0 != image_id)
                 {
+                    qPic.setVisibility(View.VISIBLE);
                     byte[] arr = getQuestionPicture(image_id);
                     Bitmap bitmap = BitmapFactory.decodeByteArray(arr , 0, arr.length);
                     qPic.setImageBitmap(bitmap);
@@ -355,8 +356,8 @@ public class QuestionActivity extends AppCompatActivity {
                 Iterator<RadioButton> rButIter = rButList.iterator();
                 for (c.moveToFirst(); !c.isAfterLast(); c.moveToNext()) {
                     RadioButton btn = rButIter.next();
-                    btn.setTextColor(Color.BLACK);
                     btn.setText("");
+                    btn.setTextColor(Color.BLACK);
                     btn.setText(c.getString(0).trim());
                 }
                 c.close();
