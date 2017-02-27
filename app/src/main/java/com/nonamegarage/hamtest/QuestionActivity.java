@@ -1,5 +1,6 @@
 package com.nonamegarage.hamtest;
 
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -29,6 +30,7 @@ import android.widget.TextView;
 import android.database.sqlite.SQLiteDatabase;
 import android.widget.Toast;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -42,11 +44,11 @@ class DBHelper extends SQLiteOpenHelper {
     private final Context myContext;
 
     public DBHelper(Context context, String filePath) {
-        super(context, "hamtest.db", null, 1);
+        super(context, "hamtest.db", null, 5);
         this.myContext = context;
         pathToSaveDBFile = new StringBuffer(filePath).append("/").append("databases/hamtest.db").toString();
         try {
-            copyDataBase();
+             copyDataBase();
         } catch (IOException e) {
 
         }
@@ -94,6 +96,7 @@ public class QuestionActivity extends AppCompatActivity {
     private RadioGroup rgroup;
 
     private ArrayList<RadioButton> rButList;
+    private int qids[];
 
     public static final String PREFS_FILE = "Рreference";
     private int category = -1;
@@ -104,6 +107,21 @@ public class QuestionActivity extends AppCompatActivity {
     private int max_errors_possible = 5;
     private int questions_number_max = 20;
     private Chronometer timer;
+
+    final int DB_VERSION = 2;
+
+    @Override
+    protected void onSaveInstanceState (Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt("category", category);
+        outState.putInt("backButtonCount", backButtonCount);
+        outState.putInt("answers_passed", answers_passed);
+        outState.putInt("errors_number", errors_number);
+        outState.putInt("last_question_id", last_question_id);
+        outState.putInt("max_errors_possible", max_errors_possible);
+        outState.putInt("questions_number_max", questions_number_max);
+        outState.putLong("timer", SystemClock.elapsedRealtime() - timer.getBase());
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -131,7 +149,38 @@ public class QuestionActivity extends AppCompatActivity {
                 rButList.add((RadioButton) o);
             }
         }
-        resetTestState();
+        if (savedInstanceState != null) {
+            category = savedInstanceState.getInt("category");
+            backButtonCount = savedInstanceState.getInt("backButtonCount");
+            answers_passed = savedInstanceState.getInt("answers_passed");
+            errors_number = savedInstanceState.getInt("errors_number");
+            last_question_id = savedInstanceState.getInt("last_question_id");
+            max_errors_possible = savedInstanceState.getInt("max_errors_possible");
+            questions_number_max = savedInstanceState.getInt("questions_number_max");
+            long curtime = savedInstanceState.getLong("timer");
+            timer = (Chronometer) findViewById(R.id.chrono);
+            timer.setOnChronometerTickListener(new Chronometer.OnChronometerTickListener() {
+                @Override
+                public void onChronometerTick(Chronometer chronometer) {
+                    long elapsedMillis = SystemClock.elapsedRealtime()
+                            - timer.getBase();
+
+                    if (elapsedMillis > 3600 * 1000) {
+                        String strElapsedMillis = "Время вышло!";
+                        timer.stop();
+                        Toast.makeText(getApplicationContext(),
+                                strElapsedMillis, Toast.LENGTH_SHORT)
+                                .show();
+                    }
+                }
+            });
+            timer.setBase(curtime);
+        }
+        else
+        {
+            resetTestState();
+        }
+
     }
 
     @Override
@@ -162,16 +211,10 @@ public class QuestionActivity extends AppCompatActivity {
         editor.commit();
     }
 
-    @Override
-    public void onConfigurationChanged(Configuration newConfig) {
-        super.onConfigurationChanged(newConfig);
-        setContentView(R.layout.activity_test);
-    }
-
     public void resetTestState() {
         NumberPicker np = (NumberPicker) findViewById(R.id.LevelSelector);
         np.setMaxValue(4);
-        np.setMinValue(3);
+        np.setMinValue(2);
         np.setValue(category);
         np.setVisibility(View.VISIBLE);
         np.setWrapSelectorWheel(false);
@@ -203,8 +246,13 @@ public class QuestionActivity extends AppCompatActivity {
         answers_passed = 0;
         errors_number = 0;
         last_question_id = 1;
-        questions_number_max = getMaxQuestionNumber(category);
-        progress.setMax(questions_number_max);
+        if(0 < category)
+        {
+            questions_number_max = getMaxQuestionNumber(category);
+            progress.setMax(questions_number_max);
+            qids = new int[questions_number_max];
+            collect_questions();
+        }
     }
 
     byte[] getQuestionPicture(int index){
@@ -232,6 +280,7 @@ public class QuestionActivity extends AppCompatActivity {
                     return c.getInt(0);
                 }
             } catch (Exception e) {
+                Log.e("SQL","error", e);
                 return -1;
             }
         }
@@ -243,13 +292,75 @@ public class QuestionActivity extends AppCompatActivity {
 
     }
 
+    public void updateUseCount(SQLiteDatabase db, int ID)
+    {
+        if(db.isReadOnly())
+        {
+            Log.e(getString(R.string.app_name), "Database is read only!");
+        }
+        try
+        {
+            db.beginTransaction();
+            String sql = "update questions set use_count = use_count + 1 where ID="+ID;
+            db.execSQL(sql);
+            db.setTransactionSuccessful();
+            db.endTransaction();
+        }
+        catch(Exception e)
+        {
+            Log.e(getString(R.string.app_name), "Database exception!");
+        }
+    }
+
+    public void updateLastResult(SQLiteDatabase db, int ID, int result)
+    {
+        if(db.isReadOnly())
+        {
+            Log.e(getString(R.string.app_name), "Database is read only!");
+        }
+        try
+        {
+            db.beginTransaction();
+            String sql = "update questions set last_result = " + result + " where ID="+ID;
+            db.execSQL(sql);
+            db.setTransactionSuccessful();
+            db.endTransaction();
+        }
+        catch(Exception e)
+        {
+            Log.e(getString(R.string.app_name), "Database exception!");
+        }
+    }
+
+    public void collect_questions()
+    {
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+        int id = 0;
+        if (db.isOpen()) {
+            try {
+                Cursor c = db.rawQuery("select ID from questions where category=" + category + " ORDER BY use_count DESC, RANDOM() LIMIT " + questions_number_max, null);
+
+                for (c.moveToFirst(); !c.isAfterLast(); c.moveToNext())
+                {
+                    int qid = c.getInt(0);
+                    qids[id++] = qid;
+                    //updateUseCount(db, qid);
+                }
+                c.close();
+            } catch (Exception e) {
+
+            }
+            db.close();
+        }
+    }
+
     public void parseQuestion(View curview) {
 
         if (0 == answers_passed) {
 
-            questions_number_max = getMaxQuestionNumber(category);
             NumberPicker np = (NumberPicker) findViewById(R.id.LevelSelector);
             category = np.getValue();
+            questions_number_max = getMaxQuestionNumber(category);
             setTitle("Категория " + Integer.toString(category));
             np.setVisibility(View.GONE);
             qLayout.setVisibility(View.VISIBLE);
@@ -293,12 +404,14 @@ public class QuestionActivity extends AppCompatActivity {
                         if (c.moveToFirst()) {
                             int correct_answer = c.getInt(0);
                             if (answer == correct_answer) {
+                                updateLastResult(db, last_question_id, 1);
                                 Log.d(getString(R.string.app_name), request);
                                 Log.d(getString(R.string.app_name), "OK: Answer is " + Integer.toString(answer) + " when correct is " + Integer.toString(correct_answer));
                                 rButList.get(answer - 1).setTextColor(Color.GREEN);
                                 Toast.makeText(getApplicationContext(), "Правильно!", Toast.LENGTH_SHORT)
                                         .show();
                             } else {
+                                updateLastResult(db, last_question_id, 0);
                                 Log.d(getString(R.string.app_name), "WRONG: Answer is " + Integer.toString(answer) + " when correct is " + Integer.toString(correct_answer));
                                 errors_number++;
                                 rButList.get(answer - 1).setTextColor(Color.RED);
@@ -311,6 +424,7 @@ public class QuestionActivity extends AppCompatActivity {
                     } catch (Exception e) {
 
                     }
+                    db.close();
                 }
                 nextBtn.setText("Следующий вопрос");
                 return;
@@ -328,15 +442,16 @@ public class QuestionActivity extends AppCompatActivity {
         progress.setProgress(answers_passed++);
         progress.setSecondaryProgress(answers_passed);
 
-        SQLiteDatabase db = dbHelper.getReadableDatabase();
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
         if (db.isOpen()) {
             try {
-                Cursor c = db.rawQuery("select ID,question_text,question_image from questions where category=" + category + " ORDER BY RANDOM() LIMIT 1", null);
+                Cursor c = db.rawQuery("select ID,question_text,question_image from questions where ID=" + qids[answers_passed - 1], null);
                 int image_id =-1;
                 if (c.moveToFirst()) {
                     image_id = c.getInt(2);
                     qText.setText(c.getString(1).trim());
                     last_question_id = c.getInt(0);
+                    updateUseCount(db, last_question_id);
                 }
                 qPic = (ImageView) findViewById(R.id.qpic);
                 if(0 != image_id)
@@ -364,6 +479,7 @@ public class QuestionActivity extends AppCompatActivity {
             } catch (Exception e) {
 
             }
+            db.close();
         }
     }
 }

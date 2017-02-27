@@ -39,6 +39,7 @@
                 android:scaleType="centerCrop"
                 android:adjustViewBounds="true"
                 android:onClick="expandImage"
+                android:background="@drawable/divider"
                 android:id="@+id/qpic"/>
 
             <TextView android:layout_width="wrap_content"
@@ -52,24 +53,28 @@
                 android:checked="false" android:id="@+id/answer1"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
+                android:background="@drawable/divider"
                 />
 
             <RadioButton
                 android:checked="false" android:id="@+id/answer2"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
+                android:background="@drawable/divider"
                 />
 
             <RadioButton
                 android:checked="false" android:id="@+id/answer3"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
+                android:background="@drawable/divider"
                 />
 
             <RadioButton
                 android:checked="false" android:id="@+id/answer4"
                 android:layout_width="fill_parent"
                 android:layout_height="wrap_content"
+                android:background="@drawable/divider"
                 />
         </RadioGroup>
     </LinearLayout>

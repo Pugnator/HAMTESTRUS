@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">HAMTEST Alpha version</string>
+    <string name="app_name">HAMTEST</string>
     <string name="title_activity_settings">Settings</string>
     <string name="description_zoom_touch_close">Увеличить</string>
 

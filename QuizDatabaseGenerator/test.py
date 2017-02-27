@@ -4,11 +4,11 @@
 from __future__ import print_function
 import re
 import sys
-import itertools
+import codecs
 import os
 import sqlite3
 
-DB = 'main.db'
+DB = 'hamtest.db'
 
 schemes = [
     ("CREATE TABLE IF NOT EXISTS categories \
@@ -44,14 +44,16 @@ def create_db():
 
 
 def process_tests(category):
-    with open('text/' + str(category) + '.txt') as f:
+    file = 'text/' + str(category) + '.txt'
+    print('Opening {0}'.format(file))
+    with codecs.open(file, "r", "utf_8_sig" ) as f:
         return f.read().splitlines()
 
 
 def getNumberOfQuestions(test):
     number = 0
     for k in test:
-        if u"Вопрос" in k.decode('1251'):
+        if u"Вопрос" in k:
             number = number + 1
     return number
 
@@ -60,7 +62,7 @@ def setPassConditions():
     conn = sqlite3.connect(DB)
     c = conn.cursor()
     c.execute("INSERT OR REPLACE INTO categories(level, qnum, max_errors) VALUES (?,?,?)",
-                      (1, 45, 5))
+              (1, 45, 5))
     c.execute("INSERT OR REPLACE INTO categories(level, qnum, max_errors) VALUES (?,?,?)",
               (2, 30, 5))
     c.execute("INSERT OR REPLACE INTO categories(level, qnum, max_errors) VALUES (?,?,?)",
@@ -77,42 +79,43 @@ def extract_questions(test, category):
     c = conn.cursor()
     quest_id = 0
     for i, s in enumerate(test):
-        if u"Вопрос" in s.decode('1251'):
+        if u"Вопрос" in s:
             num = num + 1
             print('Вопрос {0}'.format(num))
             question = ''
             it = 1
-            while test[i + it] and u"a)    " not in test[i + it].decode('1251') and u"<<" not in test[i + it].decode('1251'):
+            while test[i + it] and u"a)    " not in test[i + it] and u"<<" not in test[i + it]:
                 question = question + " " + test[i + it]
                 it = it + 1
-            print(question.decode('1251'))
-            c.execute("INSERT OR REPLACE INTO questions(question_text, number, category, question_image) VALUES (?,?,?,?)",
-                      (question.decode('1251'), num, category, 0))
+            print(question)
+            c.execute(
+                "INSERT OR REPLACE INTO questions(question_text, number, category, question_image, use_count) VALUES (?,?,?,?,?)",
+                (question, num, category, 0, 0))
             quest_id = c.lastrowid
             continue
-        if "<<" in s.decode('1251'):
-            result = re.search('<<(.*)>>', s.decode('1251'))
-            c.execute("update questions set question_image=? where number=?",(result.group(1),quest_id,))
+        if "<<" in s:
+            result = re.search('<<(.*)>>', s)
+            c.execute("update questions set question_image=? where ID=?", (result.group(1), quest_id,))
             continue
-        if u"a)    " in s.decode('1251'):
-            print(s[6:].decode('1251'))
+        if u"a)    " in s:
+            print(s[6:])
             c.execute("INSERT OR REPLACE INTO answers(answer_text, is_correct, serial, question) VALUES (?,?,?,?)",
-                      (s[6:].decode('1251'), 0, 1, quest_id))
+                      (s[6:], 0, 1, quest_id))
             continue
-        if u"b)    " in s.decode('1251'):
-            print(s[6:].decode('1251'))
+        if u"b)    " in s:
+            print(s[6:])
             c.execute("INSERT OR REPLACE INTO answers(answer_text, is_correct, serial, question) VALUES (?,?,?,?)",
-                      (s[6:].decode('1251'), 0, 2, quest_id))
+                      (s[6:], 0, 2, quest_id))
             continue
-        if u"c)    " in s.decode('1251'):
-            print(s[6:].decode('1251'))
+        if u"c)    " in s:
+            print(s[6:])
             c.execute("INSERT OR REPLACE INTO answers(answer_text, is_correct, serial, question) VALUES (?,?,?,?)",
-                      (s[6:].decode('1251'), 0, 3, quest_id))
+                      (s[6:], 0, 3, quest_id))
             continue
-        if u"d)    " in s.decode('1251'):
-            print(s[6:].decode('1251'))
+        if u"d)    " in s:
+            print(s[6:])
             c.execute("INSERT OR REPLACE INTO answers(answer_text, is_correct, serial, question) VALUES (?,?,?,?)",
-                      (s[6:].decode('1251'), 0, 4, quest_id))
+                      (s[6:], 0, 4, quest_id))
             continue
     conn.commit()
     conn.close()
@@ -129,7 +132,7 @@ def processImages():
             if filepath.endswith(".png"):
                 imageFile = open(filepath, 'rb')
                 b = sqlite3.Binary(imageFile.read())
-                c.execute("INSERT INTO images (image, idx) values(?,?)", (b,os.path.splitext(file)[0],))
+                c.execute("INSERT INTO images (image, idx) values(?,?)", (b, os.path.splitext(file)[0],))
     conn.commit()
     conn.close()
 
@@ -154,7 +157,7 @@ def process_answers(category):
                 sys.exit(1)
 
             sql = '''update answers set is_correct=1 where question=\
-            (select ID from questions where category={0} and number={1}) and  serial={2}'''.format(category,quest,result)
+            (select ID from questions where category={0} and number={1}) and  serial={2}'''.format(category, quest, result)
             quest = quest + 1
             c.execute(sql)
         conn.commit()
@@ -162,10 +165,12 @@ def process_answers(category):
 
 
 def main():
+
     create_db()
     setPassConditions()
     processImages()
-    for i in range(3, 5, 1):
+    for i in range(2, 5, 1):
+        print('Processing category {0}'.format(i))
         lines = process_tests(i)
         if lines:
             print('Number of questions: {0}'.format(getNumberOfQuestions(lines)))
